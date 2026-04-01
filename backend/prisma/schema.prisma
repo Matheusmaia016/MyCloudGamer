@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  name               String
+  email              String              @unique
+  passwordHash       String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  hosts              HostDevice[]
+  mobileDevices      MobileDevice[]
+  pairingCodes       PairingCode[]
+  library            UserLibrary[]
+  favorites          Favorite[]
+  sessions           Session[]
+  sessionHistory     SessionHistory[]
+  connectionProfiles ConnectionProfile[]
+}
+
+model HostDevice {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  os          String
+  uniqueKey   String      @unique
+  lastSeenAt  DateTime?
+  isOnline    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  sessions    Session[]
+  pairings    PairingCode[]
+
+  @@index([userId])
+}
+
+model MobileDevice {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  platform    String
+  pushToken   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PairingCode {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hostId      String?
+  host        HostDevice? @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  code        String      @unique
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@index([userId])
+  @@index([hostId])
+}
+
+model Game {
+  id          String         @id @default(cuid())
+  title       String
+  genre       String
+  coverUrl    String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  library     UserLibrary[]
+  favorites   Favorite[]
+  sessions    Session[]
+  history     SessionHistory[]
+}
+
+model UserLibrary {
+  id          String   @id @default(cuid())
+  userId      String
+  gameId      String
+  lastPlayedAt DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+  @@index([userId])
+}
+
+model Favorite {
+  id          String   @id @default(cuid())
+  userId      String
+  gameId      String
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+  @@index([userId])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  hostId      String
+  gameId      String
+  status      String
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  host        HostDevice @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+}
+
+model SessionHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  hostId      String
+  gameId      String
+  startedAt   DateTime
+  endedAt     DateTime
+  status      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+}
+
+model ConnectionProfile {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  bitrateKbps Int
+  resolution  String
+  fps         Int
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
